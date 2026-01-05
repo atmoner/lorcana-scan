@@ -1,5 +1,5 @@
 {
   "appId": "com.lorcanascan.app",
   "appName": "lorcana-scan",
-  "webDir": "dist"
+  "webDir": ".output/public"
 }
