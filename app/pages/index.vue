@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen flex flex-col">
+  <div class="min-h-screen flex flex-col safe-area-container">
     <!-- Header -->
     <header
-      class="bg-black/30 backdrop-blur-sm border-b border-white/10 px-4 py-3"
+      class="bg-black/30 backdrop-blur-sm border-b border-white/10 px-4 py-3 pt-safe"
     >
       <div class="flex items-center justify-between">
         <h1 class="text-xl font-bold text-white flex items-center gap-2">
@@ -385,13 +385,38 @@
           )}`
         : `/api/cards/search?q=${encodeURIComponent(query)}`
 
-      const response = await fetch(apiUrl)
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la recherche")
+      let response: Response
+      try {
+        response = await fetch(apiUrl)
+      } catch (networkError) {
+        throw new Error(
+          "Impossible de se connecter au serveur. Vérifiez votre connexion internet."
+        )
       }
 
-      const data = await response.json()
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Aucune carte trouvée pour "${query}".`)
+        } else if (response.status === 429) {
+          throw new Error(
+            "Trop de requêtes. Veuillez patienter quelques secondes."
+          )
+        } else if (response.status >= 500) {
+          throw new Error(
+            "Le serveur est temporairement indisponible. Réessayez plus tard."
+          )
+        } else {
+          throw new Error(`Erreur serveur (${response.status}). Réessayez.`)
+        }
+      }
+
+      let data: any
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        throw new Error("Erreur lors de la lecture des données.")
+      }
+
       const queryLower = query.toLowerCase().trim()
 
       // Filter and map API response to our card format
@@ -500,5 +525,21 @@
   .slide-up-leave-to {
     opacity: 0;
     transform: translateY(100%);
+  }
+
+  /* Safe area support for mobile devices */
+  .safe-area-container {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .pt-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
+
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 </style>
