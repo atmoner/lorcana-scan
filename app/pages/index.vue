@@ -319,6 +319,7 @@
 
 <script setup lang="ts">
   import { Capacitor } from "@capacitor/core"
+  import { Http } from "@capacitor-community/http"
 
   interface CardAbility {
     name: string
@@ -378,43 +379,60 @@
 
   async function searchCardByName(query: string): Promise<LorcanaCard[]> {
     try {
-      // Use direct API on native platforms (no CORS), proxy on web
-      const apiUrl = isNative.value
-        ? `https://lorca-lab.com/api/cards/search?q=${encodeURIComponent(
-            query
-          )}`
-        : `/api/cards/search?q=${encodeURIComponent(query)}`
-
-      let response: Response
-      try {
-        response = await fetch(apiUrl)
-      } catch (networkError) {
-        throw new Error(
-          "Impossible de se connecter au serveur. Vérifiez votre connexion internet."
-        )
-      }
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(`Aucune carte trouvée pour "${query}".`)
-        } else if (response.status === 429) {
-          throw new Error(
-            "Trop de requêtes. Veuillez patienter quelques secondes."
-          )
-        } else if (response.status >= 500) {
-          throw new Error(
-            "Le serveur est temporairement indisponible. Réessayez plus tard."
-          )
-        } else {
-          throw new Error(`Erreur serveur (${response.status}). Réessayez.`)
-        }
-      }
+      const apiUrl = `https://lorca-lab.com/api/cards/search?q=${encodeURIComponent(
+        query
+      )}`
 
       let data: any
-      try {
-        data = await response.json()
-      } catch (parseError) {
-        throw new Error("Erreur lors de la lecture des données.")
+
+      if (isNative.value) {
+        // Use native HTTP plugin on mobile (no CORS issues)
+        try {
+          const response = await Http.get({
+            url: apiUrl,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
+          data = response.data
+        } catch (networkError) {
+          throw new Error(
+            "Impossible de se connecter au serveur. Vérifiez votre connexion internet."
+          )
+        }
+      } else {
+        // Use fetch with proxy on web
+        const proxyUrl = `/api/cards/search?q=${encodeURIComponent(query)}`
+        let response: Response
+        try {
+          response = await fetch(proxyUrl)
+        } catch (networkError) {
+          throw new Error(
+            "Impossible de se connecter au serveur. Vérifiez votre connexion internet."
+          )
+        }
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error(`Aucune carte trouvée pour "${query}".`)
+          } else if (response.status === 429) {
+            throw new Error(
+              "Trop de requêtes. Veuillez patienter quelques secondes."
+            )
+          } else if (response.status >= 500) {
+            throw new Error(
+              "Le serveur est temporairement indisponible. Réessayez plus tard."
+            )
+          } else {
+            throw new Error(`Erreur serveur (${response.status}). Réessayez.`)
+          }
+        }
+
+        try {
+          data = await response.json()
+        } catch (parseError) {
+          throw new Error("Erreur lors de la lecture des données.")
+        }
       }
 
       const queryLower = query.toLowerCase().trim()
