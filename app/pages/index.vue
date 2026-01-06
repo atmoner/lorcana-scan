@@ -318,8 +318,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Capacitor } from "@capacitor/core"
-  import { Http } from "@capacitor-community/http"
+  import { Capacitor, CapacitorHttp } from "@capacitor/core"
 
   interface CardAbility {
     name: string
@@ -386,9 +385,9 @@
       let data: any
 
       if (isNative.value) {
-        // Use native HTTP plugin on mobile (no CORS issues)
+        // Use native HTTP on mobile (no CORS issues)
         try {
-          const response = await Http.get({
+          const response = await CapacitorHttp.get({
             url: apiUrl,
             headers: {
               "Content-Type": "application/json",
