@@ -7,11 +7,11 @@
       <div class="flex items-center justify-between">
         <h1 class="text-xl font-bold text-white flex items-center gap-2">
           <span class="text-2xl">✨</span>
-          Lorcana Scanner
+          Lorcana Search
         </h1>
         <button
-          v-if="scannedCard"
-          @click="resetScan"
+          v-if="selectedCard"
+          @click="resetSearch"
           class="text-white/70 hover:text-white transition-colors"
         >
           <svg
@@ -34,32 +34,19 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col p-4">
-      <!-- Scanner View -->
+      <!-- Search View -->
       <div
-        v-if="!scannedCard"
+        v-if="!selectedCard"
         class="flex-1 flex flex-col items-center justify-center gap-6"
       >
-        <!-- Camera Preview -->
-        <div
-          class="relative w-full max-w-sm aspect-[2.5/3.5] rounded-2xl overflow-hidden bg-black/40 border-2 border-dashed border-white/30"
-        >
-          <!-- Video preview for web -->
-          <video
-            v-if="!isNative"
-            ref="videoRef"
-            class="absolute inset-0 w-full h-full object-cover"
-            autoplay
-            playsinline
-          ></video>
-
-          <!-- Native camera placeholder -->
+        <!-- Logo / Icon -->
+        <div class="flex flex-col items-center gap-3">
           <div
-            v-if="isNative"
-            class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-900/50 to-purple-900/50"
+            class="w-24 h-24 rounded-full bg-gradient-to-br from-lorcana-amber to-orange-500 flex items-center justify-center shadow-lg shadow-lorcana-amber/30"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-16 w-16 text-lorcana-amber mb-3"
+              class="h-12 w-12 text-white"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -67,66 +54,15 @@
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            <p class="text-white/80 text-sm font-medium">Appuyez sur Scanner</p>
-            <p class="text-white/50 text-xs mt-1">pour ouvrir la caméra</p>
           </div>
-
-          <!-- Scan Overlay -->
-          <div
-            class="absolute inset-0 flex items-center justify-center pointer-events-none"
-          >
-            <div
-              class="w-[90%] h-[90%] border-2 border-lorcana-amber rounded-xl relative"
-            >
-              <div
-                class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-lorcana-amber rounded-tl-lg"
-              ></div>
-              <div
-                class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-lorcana-amber rounded-tr-lg"
-              ></div>
-              <div
-                class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-lorcana-amber rounded-bl-lg"
-              ></div>
-              <div
-                class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-lorcana-amber rounded-br-lg"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Scanning animation -->
-          <div
-            v-if="isScanning"
-            class="absolute inset-0 flex items-center justify-center bg-black/50"
-          >
-            <div class="flex flex-col items-center gap-3">
-              <div
-                class="w-12 h-12 border-4 border-lorcana-amber border-t-transparent rounded-full animate-spin"
-              ></div>
-              <span class="text-white font-medium">Analyse en cours...</span>
-            </div>
-          </div>
+          <p class="text-white/70 text-center text-sm px-4">
+            Recherchez une carte par son nom ou son ID
+          </p>
         </div>
-
-        <!-- Instructions -->
-        <p class="text-white/70 text-center text-sm px-4">
-          <template v-if="isNative">
-            Appuyez sur le bouton Scanner pour prendre une photo de votre carte
-          </template>
-          <template v-else>
-            Placez une carte Lorcana dans le cadre et appuyez sur le bouton pour
-            scanner
-          </template>
-        </p>
 
         <!-- Search Input -->
         <div class="w-full max-w-sm">
@@ -134,7 +70,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Ou recherchez par nom..."
+              placeholder="Nom de la carte ou ID..."
               class="w-full px-4 py-3 pl-10 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-lorcana-amber focus:ring-1 focus:ring-lorcana-amber transition-all"
               @keyup.enter="searchCard"
             />
@@ -155,73 +91,72 @@
           </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="flex gap-4">
-          <button
-            @click="captureAndScan"
-            :disabled="isScanning"
-            class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-lorcana-amber to-orange-500 text-white font-semibold rounded-xl shadow-lg shadow-lorcana-amber/30 hover:shadow-lorcana-amber/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        <!-- Search Button -->
+        <button
+          @click="searchCard"
+          :disabled="!searchQuery || isSearching"
+          class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-lorcana-amber to-orange-500 text-white font-semibold rounded-xl shadow-lg shadow-lorcana-amber/30 hover:shadow-lorcana-amber/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg
+            v-if="isSearching"
+            class="h-5 w-5 animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
               stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            Scanner
-          </button>
-
-          <button
-            @click="searchCard"
-            :disabled="!searchQuery || isScanning"
-            class="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            Rechercher
-          </button>
-        </div>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          {{ isSearching ? "Recherche..." : "Rechercher" }}
+        </button>
 
         <!-- Search Results -->
         <div
           v-if="searchResults.length > 0"
-          class="w-full max-w-sm max-h-60 overflow-y-auto bg-black/30 rounded-xl border border-white/10"
+          class="w-full max-w-sm max-h-80 overflow-y-auto bg-black/30 rounded-xl border border-white/10"
         >
           <button
             v-for="card in searchResults"
             :key="card.id"
             @click="selectCard(card)"
-            class="w-full px-4 py-3 text-left text-white hover:bg-white/10 transition-colors border-b border-white/10 last:border-b-0"
+            class="w-full px-3 py-2 text-left text-white hover:bg-white/10 transition-colors border-b border-white/10 last:border-b-0 flex items-center gap-3"
           >
-            <div class="font-medium">{{ card.name }}</div>
-            <div class="text-sm text-white/60">
-              {{ card.set }} - {{ card.rarity }}
+            <img
+              :src="card.image"
+              :alt="card.name"
+              class="w-12 h-16 object-cover rounded-md flex-shrink-0"
+            />
+            <div class="flex-1 min-w-0">
+              <div class="font-medium truncate">{{ card.name }}</div>
+              <div class="text-sm text-white/60 truncate">
+                {{ card.set }} - {{ card.rarity }} - {{ card.fullIdentifier }}
+              </div>
             </div>
           </button>
         </div>
@@ -233,15 +168,15 @@
         <div class="flex justify-center">
           <div class="relative">
             <img
-              :src="scannedCard.image"
-              :alt="scannedCard.name"
+              :src="selectedCard.image"
+              :alt="selectedCard.name"
               class="w-64 rounded-xl shadow-2xl shadow-black/50"
             />
             <div
               class="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-              :class="getInkColor(scannedCard.ink)"
+              :class="getInkColor(selectedCard.ink)"
             >
-              {{ scannedCard.cost }}
+              {{ selectedCard.cost }}
             </div>
           </div>
         </div>
@@ -253,33 +188,33 @@
           <div class="flex items-start justify-between mb-3">
             <div>
               <h2 class="text-xl font-bold text-white">
-                {{ scannedCard.name }}
+                {{ selectedCard.name }}
               </h2>
-              <p class="text-white/60 text-sm">{{ scannedCard.subtitle }}</p>
+              <p class="text-white/60 text-sm">{{ selectedCard.subtitle }}</p>
             </div>
             <span
               class="px-3 py-1 rounded-full text-xs font-semibold"
-              :class="getRarityClass(scannedCard.rarity)"
+              :class="getRarityClass(selectedCard.rarity)"
             >
-              {{ scannedCard.rarity }}
+              {{ selectedCard.rarity }}
             </span>
           </div>
 
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-white/5 rounded-lg p-3">
               <p class="text-white/50 text-xs uppercase tracking-wide">Type</p>
-              <p class="text-white font-medium">{{ scannedCard.type }}</p>
+              <p class="text-white font-medium">{{ selectedCard.type }}</p>
             </div>
             <div class="bg-white/5 rounded-lg p-3">
               <p class="text-white/50 text-xs uppercase tracking-wide">Encre</p>
               <p class="text-white font-medium capitalize">
-                {{ scannedCard.ink }}
+                {{ selectedCard.ink }}
               </p>
             </div>
             <div class="bg-white/5 rounded-lg p-3">
               <p class="text-white/50 text-xs uppercase tracking-wide">Force</p>
               <p class="text-white font-medium">
-                {{ scannedCard.strength || "-" }}
+                {{ selectedCard.strength || "-" }}
               </p>
             </div>
             <div class="bg-white/5 rounded-lg p-3">
@@ -287,18 +222,18 @@
                 Volonté
               </p>
               <p class="text-white font-medium">
-                {{ scannedCard.willpower || "-" }}
+                {{ selectedCard.willpower || "-" }}
               </p>
             </div>
           </div>
 
           <!-- Abilities -->
-          <div v-if="scannedCard.abilities?.length" class="mb-4">
+          <div v-if="selectedCard.abilities?.length" class="mb-4">
             <p class="text-white/50 text-xs uppercase tracking-wide mb-2">
               Capacités
             </p>
             <div
-              v-for="(ability, index) in scannedCard.abilities"
+              v-for="(ability, index) in selectedCard.abilities"
               :key="index"
               class="bg-white/5 rounded-lg p-3 mb-2"
             >
@@ -311,11 +246,11 @@
 
           <!-- Flavor Text -->
           <div
-            v-if="scannedCard.flavorText"
+            v-if="selectedCard.flavorText"
             class="border-t border-white/10 pt-3"
           >
             <p class="text-white/50 italic text-sm">
-              "{{ scannedCard.flavorText }}"
+              "{{ selectedCard.flavorText }}"
             </p>
           </div>
 
@@ -323,19 +258,19 @@
           <div
             class="flex items-center justify-between mt-4 pt-3 border-t border-white/10"
           >
-            <span class="text-white/50 text-sm">{{ scannedCard.set }}</span>
+            <span class="text-white/50 text-sm">{{ selectedCard.set }}</span>
             <span class="text-white/50 text-sm"
-              >{{ scannedCard.number }}/{{ scannedCard.totalInSet }}</span
+              >{{ selectedCard.number }}/{{ selectedCard.totalInSet }}</span
             >
           </div>
         </div>
 
         <!-- Action Button -->
         <button
-          @click="resetScan"
+          @click="resetSearch"
           class="w-full py-4 bg-gradient-to-r from-lorcana-amethyst to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-lorcana-amethyst/30 transition-all"
         >
-          Scanner une autre carte
+          Rechercher une autre carte
         </button>
       </div>
     </main>
@@ -383,7 +318,6 @@
 </template>
 
 <script setup lang="ts">
-  import { Camera, CameraResultType, CameraSource } from "@capacitor/camera"
   import { Capacitor } from "@capacitor/core"
 
   interface CardAbility {
@@ -407,176 +341,24 @@
     image: string
     abilities?: CardAbility[]
     flavorText?: string
+    fullIdentifier?: string
   }
 
-  const config = useRuntimeConfig()
-  const videoRef = ref<HTMLVideoElement | null>(null)
   const searchQuery = ref("")
   const searchResults = ref<LorcanaCard[]>([])
-  const scannedCard = ref<LorcanaCard | null>(null)
-  const isScanning = ref(false)
+  const selectedCard = ref<LorcanaCard | null>(null)
+  const isSearching = ref(false)
   const error = ref("")
-  const cameraReady = ref(false)
   const isNative = ref(false)
-  let mediaStream: MediaStream | null = null
 
-  // Initialize camera on mount
-  onMounted(async () => {
+  onMounted(() => {
     isNative.value = Capacitor.isNativePlatform()
-    await initCamera()
   })
-
-  // Cleanup on unmount
-  onUnmounted(() => {
-    stopCamera()
-  })
-
-  async function checkCameraPermissions(): Promise<boolean> {
-    try {
-      const permissions = await Camera.checkPermissions()
-
-      if (permissions.camera === "granted") {
-        return true
-      }
-
-      if (permissions.camera === "denied") {
-        error.value =
-          "Permission caméra refusée. Veuillez l'activer dans les paramètres de l'application."
-        return false
-      }
-
-      // Request permissions if prompt
-      const requestResult = await Camera.requestPermissions({
-        permissions: ["camera"],
-      })
-      return requestResult.camera === "granted"
-    } catch (err) {
-      console.error("Permission check error:", err)
-      return false
-    }
-  }
-
-  async function initCamera() {
-    error.value = ""
-
-    if (Capacitor.isNativePlatform()) {
-      // Native Android/iOS - check and request permissions
-      const hasPermission = await checkCameraPermissions()
-      if (hasPermission) {
-        cameraReady.value = true
-      }
-    } else {
-      // Web browser - use getUserMedia
-      try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        })
-        if (videoRef.value) {
-          videoRef.value.srcObject = mediaStream
-        }
-        cameraReady.value = true
-      } catch (err) {
-        console.error("Camera access denied:", err)
-        error.value =
-          "Impossible d'accéder à la caméra. Veuillez autoriser l'accès."
-      }
-    }
-  }
-
-  function stopCamera() {
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((track) => track.stop())
-      mediaStream = null
-    }
-  }
-
-  async function captureAndScan() {
-    isScanning.value = true
-    error.value = ""
-
-    try {
-      let imageBase64: string | undefined
-
-      if (Capacitor.isNativePlatform()) {
-        // First check/request permissions on native
-        const hasPermission = await checkCameraPermissions()
-        if (!hasPermission) {
-          error.value = "Permission caméra requise pour scanner les cartes."
-          isScanning.value = false
-          return
-        }
-
-        // Native platform - use Capacitor Camera
-        const photo = await Camera.getPhoto({
-          quality: 90,
-          allowEditing: false,
-          resultType: CameraResultType.Base64,
-          source: CameraSource.Camera,
-          saveToGallery: false,
-          correctOrientation: true,
-        })
-        imageBase64 = photo.base64String
-      } else {
-        // Web browser - capture from video
-        if (videoRef.value) {
-          const canvas = document.createElement("canvas")
-          canvas.width = videoRef.value.videoWidth
-          canvas.height = videoRef.value.videoHeight
-          const ctx = canvas.getContext("2d")
-          ctx?.drawImage(videoRef.value, 0, 0)
-          imageBase64 = canvas.toDataURL("image/jpeg").split(",")[1]
-        }
-      }
-
-      if (imageBase64) {
-        // For demo purposes, we'll search using a random popular card name
-        // In a real app, you would use OCR to extract the card name from the image
-        await simulateScanSearch()
-      }
-    } catch (err: any) {
-      console.error("Scan error:", err)
-      // Handle user cancellation gracefully
-      if (
-        err.message?.includes("User cancelled") ||
-        err.message?.includes("canceled")
-      ) {
-        error.value = ""
-      } else {
-        error.value = err.message || "Erreur lors du scan. Veuillez réessayer."
-      }
-    } finally {
-      isScanning.value = false
-    }
-  }
-
-  async function simulateScanSearch() {
-    // Simulate scanning by searching for a popular card
-    const popularCards = [
-      "Mickey",
-      "Elsa",
-      "Stitch",
-      "Maui",
-      "Ursula",
-      "Maleficent",
-      "Simba",
-      "Ariel",
-    ]
-    const randomCard = popularCards[
-      Math.floor(Math.random() * popularCards.length)
-    ] as string
-
-    const results = await searchCardByName(randomCard)
-    if (results.length > 0 && results[0]) {
-      scannedCard.value = results[0]
-    } else {
-      error.value = "Aucune carte trouvée. Essayez de scanner à nouveau."
-    }
-  }
 
   async function searchCard() {
     if (!searchQuery.value.trim()) return
 
-    isScanning.value = true
+    isSearching.value = true
     error.value = ""
 
     try {
@@ -590,46 +372,62 @@
       console.error("Search error:", err)
       error.value = err.message || "Erreur lors de la recherche."
     } finally {
-      isScanning.value = false
+      isSearching.value = false
     }
   }
 
   async function searchCardByName(query: string): Promise<LorcanaCard[]> {
     try {
-      const response = await fetch(
-        `${config.public.apiBaseUrl}/cards/search?q=${encodeURIComponent(
-          query
-        )}`
-      )
+      // Use direct API on native platforms (no CORS), proxy on web
+      const apiUrl = isNative.value
+        ? `https://lorca-lab.com/api/cards/search?q=${encodeURIComponent(
+            query
+          )}`
+        : `/api/cards/search?q=${encodeURIComponent(query)}`
+
+      const response = await fetch(apiUrl)
 
       if (!response.ok) {
         throw new Error("Erreur lors de la recherche")
       }
 
       const data = await response.json()
+      const queryLower = query.toLowerCase().trim()
 
-      // Map API response to our card format
-      return (data.cards || data || []).map((card: any) => ({
-        id: card.id || card._id,
-        name: card.name || card.title,
-        subtitle: card.subtitle || card.version,
-        type: card.type || "Personnage",
-        ink: card.ink || card.color || "amber",
-        cost: card.cost || card.inkCost || 0,
-        strength: card.strength || card.attack,
-        willpower: card.willpower || card.defense,
-        rarity: card.rarity || "Commune",
-        set: card.set || card.setName || "The First Chapter",
-        number: card.number || card.cardNumber || "001",
-        totalInSet: card.totalInSet || "204",
-        image:
-          card.image ||
-          card.imageUrl ||
-          card.images?.full ||
-          `https://lorca-lab.com/cards/${card.id}.jpg`,
-        abilities: card.abilities || [],
-        flavorText: card.flavorText || card.flavor,
-      }))
+      // Filter and map API response to our card format
+      return (data.cards || data || [])
+        .filter((card: any) => {
+          const name = (card.name || card.title || "").toLowerCase()
+          const subtitle = (card.subtitle || card.version || "").toLowerCase()
+          const id = (card.id || card._id || "").toString().toLowerCase()
+          return (
+            name.includes(queryLower) ||
+            subtitle.includes(queryLower) ||
+            id.includes(queryLower)
+          )
+        })
+        .map((card: any) => ({
+          id: card.id || card._id,
+          name: card.name || card.title,
+          subtitle: card.subtitle || card.version,
+          type: card.type || "Personnage",
+          ink: card.ink || card.color || "amber",
+          cost: card.cost || card.inkCost || 0,
+          strength: card.strength || card.attack,
+          willpower: card.willpower || card.defense,
+          rarity: card.rarity || "Commune",
+          set: card.set || card.setName || "The First Chapter",
+          number: card.number || card.cardNumber || "001",
+          totalInSet: card.totalInSet || "204",
+          image:
+            card.image ||
+            card.imageUrl ||
+            card.images?.full ||
+            `https://lorca-lab.com/cards/${card.id}.jpg`,
+          abilities: card.abilities || [],
+          flavorText: card.flavorText || card.flavor,
+          fullIdentifier: card.fullIdentifier || `${card.set}-${card.number}`,
+        }))
     } catch (err) {
       console.error("API Error:", err)
       throw err
@@ -637,16 +435,15 @@
   }
 
   function selectCard(card: LorcanaCard) {
-    scannedCard.value = card
+    selectedCard.value = card
     searchResults.value = []
     searchQuery.value = ""
   }
 
-  function resetScan() {
-    scannedCard.value = null
+  function resetSearch() {
+    selectedCard.value = null
     searchResults.value = []
     searchQuery.value = ""
-    initCamera()
   }
 
   function getInkColor(ink: string): string {
