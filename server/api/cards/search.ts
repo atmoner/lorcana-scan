@@ -2,19 +2,15 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const searchQuery = query.q as string
 
-  if (!searchQuery) {
+  /*   if (!searchQuery) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Missing search query parameter "q"',
     })
   }
-
+ */
   try {
-    const response = await fetch(
-      `https://lorca-lab.com/api/cards/search?q=${encodeURIComponent(
-        searchQuery
-      )}`
-    )
+    const response = await fetch(`https://lorca-lab.com/api/cards/search`)
 
     if (!response.ok) {
       throw createError({

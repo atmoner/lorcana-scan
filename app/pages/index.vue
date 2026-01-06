@@ -34,9 +34,20 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col p-4">
+      <!-- Loading State -->
+      <div
+        v-if="isLoading"
+        class="flex-1 flex flex-col items-center justify-center gap-4"
+      >
+        <div
+          class="w-16 h-16 border-4 border-lorcana-amber border-t-transparent rounded-full animate-spin"
+        ></div>
+        <p class="text-white/70 text-sm">Chargement des cartes...</p>
+      </div>
+
       <!-- Search View -->
       <div
-        v-if="!selectedCard"
+        v-else-if="!selectedCard"
         class="flex-1 flex flex-col items-center justify-center gap-6"
       >
         <!-- Logo / Icon -->
@@ -348,44 +359,26 @@
   const searchResults = ref<LorcanaCard[]>([])
   const selectedCard = ref<LorcanaCard | null>(null)
   const isSearching = ref(false)
+  const isLoading = ref(true)
   const error = ref("")
   const isNative = ref(false)
+  const allCards = ref<LorcanaCard[]>([])
 
-  onMounted(() => {
+  onMounted(async () => {
     isNative.value = Capacitor.isNativePlatform()
+    await loadAllCards()
   })
 
-  async function searchCard() {
-    if (!searchQuery.value.trim()) return
-
-    isSearching.value = true
+  async function loadAllCards() {
+    isLoading.value = true
     error.value = ""
 
     try {
-      const results = await searchCardByName(searchQuery.value)
-      searchResults.value = results
-
-      if (results.length === 0) {
-        error.value = "Aucune carte trouvée pour cette recherche."
-      }
-    } catch (err: any) {
-      console.error("Search error:", err)
-      error.value = err.message || "Erreur lors de la recherche."
-    } finally {
-      isSearching.value = false
-    }
-  }
-
-  async function searchCardByName(query: string): Promise<LorcanaCard[]> {
-    try {
-      const apiUrl = `https://lorca-lab.com/api/cards/search?q=${encodeURIComponent(
-        query
-      )}`
-
       let data: any
 
       if (isNative.value) {
         // Use native HTTP on mobile (no CORS issues)
+        const apiUrl = `https://lorca-lab.com/api/cards/search`
         try {
           const response = await CapacitorHttp.get({
             url: apiUrl,
@@ -401,7 +394,7 @@
         }
       } else {
         // Use fetch with proxy on web
-        const proxyUrl = `/api/cards/search?q=${encodeURIComponent(query)}`
+        const proxyUrl = `/api/cards/search`
         let response: Response
         try {
           response = await fetch(proxyUrl)
@@ -412,13 +405,7 @@
         }
 
         if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error(`Aucune carte trouvée pour "${query}".`)
-          } else if (response.status === 429) {
-            throw new Error(
-              "Trop de requêtes. Veuillez patienter quelques secondes."
-            )
-          } else if (response.status >= 500) {
+          if (response.status >= 500) {
             throw new Error(
               "Le serveur est temporairement indisponible. Réessayez plus tard."
             )
@@ -434,46 +421,74 @@
         }
       }
 
-      const queryLower = query.toLowerCase().trim()
-
-      // Filter and map API response to our card format
-      return (data.cards || data || [])
-        .filter((card: any) => {
-          const name = (card.name || card.title || "").toLowerCase()
-          const subtitle = (card.subtitle || card.version || "").toLowerCase()
-          const id = (card.id || card._id || "").toString().toLowerCase()
-          return (
-            name.includes(queryLower) ||
-            subtitle.includes(queryLower) ||
-            id.includes(queryLower)
-          )
-        })
-        .map((card: any) => ({
-          id: card.id || card._id,
-          name: card.name || card.title,
-          subtitle: card.subtitle || card.version,
-          type: card.type || "Personnage",
-          ink: card.ink || card.color || "amber",
-          cost: card.cost || card.inkCost || 0,
-          strength: card.strength || card.attack,
-          willpower: card.willpower || card.defense,
-          rarity: card.rarity || "Commune",
-          set: card.set || card.setName || "The First Chapter",
-          number: card.number || card.cardNumber || "001",
-          totalInSet: card.totalInSet || "204",
-          image:
-            card.image ||
-            card.imageUrl ||
-            card.images?.full ||
-            `https://lorca-lab.com/cards/${card.id}.jpg`,
-          abilities: card.abilities || [],
-          flavorText: card.flavorText || card.flavor,
-          fullIdentifier: card.fullIdentifier || `${card.set}-${card.number}`,
-        }))
-    } catch (err) {
-      console.error("API Error:", err)
-      throw err
+      // Map API response to our card format
+      allCards.value = (data.cards || data || []).map((card: any) => ({
+        id: card.id || card._id,
+        name: card.name || card.title,
+        subtitle: card.subtitle || card.version,
+        type: card.type || "Personnage",
+        ink: card.ink || card.color || "amber",
+        cost: card.cost || card.inkCost || 0,
+        strength: card.strength || card.attack,
+        willpower: card.willpower || card.defense,
+        rarity: card.rarity || "Commune",
+        set: card.set || card.setName || "The First Chapter",
+        number: card.number || card.cardNumber || "001",
+        totalInSet: card.totalInSet || "204",
+        image:
+          card.image ||
+          card.imageUrl ||
+          card.images?.full ||
+          `https://lorca-lab.com/cards/${card.id}.jpg`,
+        abilities: card.abilities || [],
+        flavorText: card.flavorText || card.flavor,
+        fullIdentifier: card.fullIdentifier || `${card.set}-${card.number}`,
+      }))
+    } catch (err: any) {
+      console.error("Load error:", err)
+      error.value = err.message || "Erreur lors du chargement des cartes."
+    } finally {
+      isLoading.value = false
     }
+  }
+
+  async function searchCard() {
+    if (!searchQuery.value.trim()) return
+
+    isSearching.value = true
+    error.value = ""
+
+    try {
+      const results = searchCardByName(searchQuery.value)
+      searchResults.value = results
+
+      if (results.length === 0) {
+        error.value = "Aucune carte trouvée pour cette recherche."
+      }
+    } catch (err: any) {
+      console.error("Search error:", err)
+      error.value = err.message || "Erreur lors de la recherche."
+    } finally {
+      isSearching.value = false
+    }
+  }
+
+  function searchCardByName(query: string): LorcanaCard[] {
+    const queryLower = query.toLowerCase().trim()
+
+    return allCards.value.filter((card) => {
+      const name = (card.name || "").toLowerCase()
+      const subtitle = (card.subtitle || "").toLowerCase()
+      const id = (card.id || "").toString().toLowerCase()
+      const fullIdentifier = (card.fullIdentifier || "").toLowerCase()
+
+      return (
+        name.includes(queryLower) ||
+        subtitle.includes(queryLower) ||
+        id.includes(queryLower) ||
+        fullIdentifier.includes(queryLower)
+      )
+    })
   }
 
   function selectCard(card: LorcanaCard) {
