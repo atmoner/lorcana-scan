@@ -155,7 +155,7 @@
           <button
             v-for="card in searchResults"
             :key="card.id"
-            @click="selectCard(card)"
+            @click="selectCard(card, card.id)"
             class="w-full px-3 py-2 text-left text-white hover:bg-white/10 transition-colors border-b border-white/10 last:border-b-0 flex items-center gap-3"
           >
             <img
@@ -274,6 +274,81 @@
               >{{ selectedCard.number }}/{{ selectedCard.totalInSet }}</span
             >
           </div>
+
+          <!-- Price Info -->
+          <div
+            v-if="selectedCard.priceInfo"
+            class="mt-4 pt-3 border-t border-white/10"
+          >
+            <p class="text-white/50 text-xs uppercase tracking-wide mb-3">
+              💰 Prix du marché
+            </p>
+            <div class="grid grid-cols-2 gap-3">
+              <div
+                v-if="selectedCard.priceInfo.cheapestPrice"
+                class="bg-white/5 rounded-lg p-3"
+              >
+                <p class="text-white/50 text-xs uppercase tracking-wide">
+                  Prix min
+                </p>
+                <p class="text-green-400 font-medium text-lg">
+                  {{
+                    formatPrice(
+                      selectedCard.priceInfo.cheapestPrice,
+                      selectedCard.priceInfo.currency
+                    )
+                  }}
+                </p>
+              </div>
+              <div
+                v-if="selectedCard.priceInfo.maxPrice"
+                class="bg-white/5 rounded-lg p-3"
+              >
+                <p class="text-white/50 text-xs uppercase tracking-wide">
+                  Prix max
+                </p>
+                <p class="text-red-400 font-medium text-lg">
+                  {{
+                    formatPrice(
+                      selectedCard.priceInfo.maxPrice,
+                      selectedCard.priceInfo.currency
+                    )
+                  }}
+                </p>
+              </div>
+            </div>
+            <!-- Available products -->
+            <div v-if="selectedCard.priceInfo.products?.length" class="mt-3">
+              <p class="text-white/50 text-xs uppercase tracking-wide mb-2">
+                📦 {{ selectedCard.priceInfo.products.length }} offres
+                disponibles
+              </p>
+              <div class="space-y-2 max-h-40 overflow-y-auto">
+                <div
+                  v-for="product in selectedCard.priceInfo.products.slice(0, 5)"
+                  :key="product.id"
+                  class="bg-white/5 rounded-lg p-2 flex items-center justify-between text-sm"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-white/70">{{
+                      product.properties_hash.condition
+                    }}</span>
+                    <span
+                      v-if="product.properties_hash.lorcana_foil"
+                      class="text-purple-400"
+                      >✨ Foil</span
+                    >
+                    <span class="text-white/50 text-xs"
+                      >({{ product.properties_hash.lorcana_language }})</span
+                    >
+                  </div>
+                  <span class="text-lorcana-amber font-semibold">{{
+                    product.price.formatted
+                  }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Action Button -->
@@ -336,6 +411,29 @@
     effect: string
   }
 
+  interface PriceInfo {
+    cheapestPrice?: number
+    maxPrice?: number
+    currency?: string
+    products?: Array<{
+      id: number
+      name_en: string
+      price_cents: number
+      price_currency: string
+      quantity: number
+      properties_hash: {
+        condition: string
+        lorcana_language: string
+        lorcana_foil: boolean
+      }
+      price: {
+        cents: number
+        currency: string
+        formatted: string
+      }
+    }>
+  }
+
   interface LorcanaCard {
     id: string
     name: string
@@ -353,6 +451,7 @@
     abilities?: CardAbility[]
     flavorText?: string
     fullIdentifier?: string
+    priceInfo?: PriceInfo
   }
 
   const searchQuery = ref("")
@@ -422,28 +521,9 @@
       }
 
       // Map API response to our card format
-      allCards.value = (data.cards || data || []).map((card: any) => ({
-        id: card.id || card._id,
-        name: card.name || card.title,
-        subtitle: card.subtitle || card.version,
-        type: card.type || "Personnage",
-        ink: card.ink || card.color || "amber",
-        cost: card.cost || card.inkCost || 0,
-        strength: card.strength || card.attack,
-        willpower: card.willpower || card.defense,
-        rarity: card.rarity || "Commune",
-        set: card.set || card.setName || "The First Chapter",
-        number: card.number || card.cardNumber || "001",
-        totalInSet: card.totalInSet || "204",
-        image:
-          card.image ||
-          card.imageUrl ||
-          card.images?.full ||
-          `https://lorca-lab.com/cards/${card.id}.jpg`,
-        abilities: card.abilities || [],
-        flavorText: card.flavorText || card.flavor,
-        fullIdentifier: card.fullIdentifier || `${card.set}-${card.number}`,
-      }))
+      allCards.value = (data.cards || data || []).map((card: any) =>
+        mapCardData(card)
+      )
     } catch (err: any) {
       console.error("Load error:", err)
       error.value = err.message || "Erreur lors du chargement des cartes."
@@ -491,10 +571,73 @@
     })
   }
 
-  function selectCard(card: LorcanaCard) {
-    selectedCard.value = card
-    searchResults.value = []
-    searchQuery.value = ""
+  async function selectCard(card: LorcanaCard, cardId: string) {
+    isSearching.value = true
+    error.value = ""
+
+    try {
+      let data: any
+
+      if (isNative.value) {
+        const apiUrl = `https://lorca-lab.com/api/cards/${encodeURIComponent(
+          cardId
+        )}`
+        const response = await CapacitorHttp.get({
+          url: apiUrl,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+        data = response.data
+      } else {
+        const response = await fetch(`/api/cards/${encodeURIComponent(cardId)}`)
+        if (!response.ok) {
+          throw new Error(`Erreur serveur (${response.status})`)
+        }
+        data = await response.json()
+      }
+
+      console.log("Card details from API:", data)
+
+      // Map the detailed card data
+      selectedCard.value = mapCardData(data)
+      searchResults.value = []
+      searchQuery.value = ""
+    } catch (err: any) {
+      console.error("Error fetching card details:", err)
+      // Fallback to the card data we already have
+      selectedCard.value = card
+      searchResults.value = []
+      searchQuery.value = ""
+    } finally {
+      isSearching.value = false
+    }
+  }
+
+  function mapCardData(card: any): LorcanaCard {
+    return {
+      id: card.id || card._id,
+      name: card.name || card.title,
+      subtitle: card.subtitle || card.version,
+      type: card.type || "Personnage",
+      ink: card.ink || card.color || "amber",
+      cost: card.cost || card.inkCost || 0,
+      strength: card.strength || card.attack,
+      willpower: card.willpower || card.defense,
+      rarity: card.rarity || "Commune",
+      set: card.set || card.setName || "The First Chapter",
+      number: card.number || card.cardNumber || "001",
+      totalInSet: card.totalInSet || "204",
+      image:
+        card.image ||
+        card.imageUrl ||
+        card.images?.full ||
+        `https://lorca-lab.com/cards/${card.id}.jpg`,
+      abilities: card.abilities || [],
+      flavorText: card.flavorText || card.flavor,
+      fullIdentifier: card.fullIdentifier || `${card.set}-${card.number}`,
+      priceInfo: card.priceInfo || card.prices || null,
+    }
   }
 
   function resetSearch() {
@@ -529,6 +672,17 @@
         "bg-gradient-to-r from-pink-500/50 to-purple-500/50 text-pink-200",
     }
     return classes[rarity] || "bg-gray-500/50 text-gray-200"
+  }
+
+  function formatPrice(
+    price: number | undefined,
+    currency: string = "EUR"
+  ): string {
+    if (price === undefined || price === null) return "-"
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: currency,
+    }).format(price)
   }
 </script>
 
@@ -568,7 +722,7 @@
   }
 
   .pt-safe {
-    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-top: max(0.5rem, env(safe-area-inset-top));
   }
 
   .pb-safe {
