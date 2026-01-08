@@ -1,36 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col safe-area-container">
     <!-- Header -->
-    <header
-      class="bg-black/30 backdrop-blur-sm border-b border-white/10 px-4 py-3 pt-safe"
-    >
-      <div class="flex items-center justify-between">
-        <h1 class="text-xl font-bold text-white flex items-center gap-2">
-          <span class="text-2xl">✨</span>
-          Lorcana Search
-        </h1>
-        <button
-          v-if="selectedCard"
-          @click="resetSearch"
-          class="text-white/70 hover:text-white transition-colors"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-    </header>
+    <AppHeader :show-close-button="!!selectedCard" @close="resetSearch" />
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col p-4">
@@ -40,7 +11,7 @@
         class="flex-1 flex flex-col items-center justify-center gap-4"
       >
         <div
-          class="w-16 h-16 border-4 border-lorcana-amber border-t-transparent rounded-full animate-spin"
+          class="w-16 h-16 border-4 border-bg-black/30 border-t-transparent rounded-full animate-spin"
         ></div>
         <p class="text-white/70 text-sm">Chargement des cartes...</p>
       </div>
@@ -53,7 +24,7 @@
         <!-- Logo / Icon -->
         <div class="flex flex-col items-center gap-3">
           <div
-            class="w-24 h-24 rounded-full bg-gradient-to-br from-lorcana-amber to-orange-500 flex items-center justify-center shadow-lg shadow-lorcana-amber/30"
+            class="w-24 h-24 rounded-full bg-black/30 backdrop-blur-sm border-b border-white/10 flex items-center justify-center shadow-lg"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -106,7 +77,7 @@
         <button
           @click="searchCard"
           :disabled="!searchQuery || isSearching"
-          class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-lorcana-amber to-orange-500 text-white font-semibold rounded-xl shadow-lg shadow-lorcana-amber/30 hover:shadow-lorcana-amber/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex items-center gap-2 px-8 py-3 bg-black/30 backdrop-blur-sm border-b border-white/10 text-white font-semibold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg
             v-if="isSearching"
@@ -164,9 +135,12 @@
               class="w-12 h-16 object-cover rounded-md flex-shrink-0"
             />
             <div class="flex-1 min-w-0">
-              <div class="font-medium truncate">{{ card.name }}</div>
+              <div class="flex items-center gap-2">
+                <CardRarity :rarity="card.rarity" />
+                <span class="font-medium truncate">{{ card.name }}</span>
+              </div>
               <div class="text-sm text-white/60 truncate">
-                {{ card.set }} - {{ card.rarity }} - {{ card.fullIdentifier }}
+                {{ card.rarity }} - {{ card.fullIdentifier }}
               </div>
             </div>
           </button>
@@ -203,10 +177,12 @@
               </h2>
               <p class="text-white/60 text-sm">{{ selectedCard.subtitle }}</p>
             </div>
+
             <span
-              class="px-3 py-1 rounded-full text-xs font-semibold"
+              class="flex items-center gap-2 rounded-full text-xs font-semibold px-3 py-1"
               :class="getRarityClass(selectedCard.rarity)"
             >
+              <CardRarity :rarity="selectedCard.rarity" />
               {{ selectedCard.rarity }}
             </span>
           </div>
@@ -249,9 +225,11 @@
               class="bg-white/5 rounded-lg p-3 mb-2"
             >
               <p class="text-lorcana-amber font-semibold text-sm">
-                {{ ability.name }}
+                {{ ability.name || "Capacité inconnue" }}
               </p>
-              <p class="text-white/80 text-sm">{{ ability.effect }}</p>
+              <p class="text-white/80 text-sm">
+                {{ ability.effect || "Effet inconnu" }}
+              </p>
             </div>
           </div>
 
@@ -319,7 +297,7 @@
             </div>
             <!-- Available products -->
             <div v-if="selectedCard.priceInfo.products?.length" class="mt-3">
-              <p class="text-white/50 text-xs uppercase tracking-wide mb-2">
+              <p class="text-white text-xs uppercase tracking-wide mb-2">
                 📦 {{ selectedCard.priceInfo.products.length }} offres
                 disponibles
               </p>
@@ -711,21 +689,5 @@
   .slide-up-leave-to {
     opacity: 0;
     transform: translateY(100%);
-  }
-
-  /* Safe area support for mobile devices */
-  .safe-area-container {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-
-  .pt-safe {
-    padding-top: max(0.5rem, env(safe-area-inset-top));
-  }
-
-  .pb-safe {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 </style>
